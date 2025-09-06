@@ -63,10 +63,10 @@ jobs:
         if: hashFiles('no_selection.flag') != ''
         run: echo "ℹ️ Aucun commentaire sélectionné → Fin du workflow."
 
-      - name: Generate image (Replicate SDXL)
+      - name: Generate image (Replicate SDXL + montage)
         if: hashFiles('no_comments.flag') == '' && hashFiles('no_selection.flag') == ''
         run: |
-          echo "🎨 Génération de la miniature avec Replicate..."
+          echo "🎨 Génération et composition de la miniature..."
           python 03_generate_image.py
         env:
           REPLICATE_API_TOKEN: ${{ secrets.REPLICATE_API_TOKEN }}
