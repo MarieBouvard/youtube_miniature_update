@@ -3,8 +3,7 @@ import json
 import requests
 import time
 import re
-import shutil
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image  # ✅ pour composer les images
 
 REPLICATE_API_TOKEN = os.getenv("REPLICATE_API_TOKEN")
 if not REPLICATE_API_TOKEN:
@@ -24,135 +23,60 @@ snippet_safe = re.sub(r"[^a-zA-Z0-9_-]", "_", snippet)
 os.makedirs("data", exist_ok=True)
 os.makedirs("data/archives", exist_ok=True)
 
-# --- Numéro global basé sur les archives ---
+# --- Numéro global basé sur le nombre d'archives existantes ---
 existing_archives = [f for f in os.listdir("data/archives") if f.lower().endswith(".png")]
 global_index = len(existing_archives) + 1
+archive_filename = f"{global_index:04d}_{author_safe}_{snippet_safe}.png"
+archive_path = os.path.join("data/archives", archive_filename)
 
-# --- Prompt ---
-prompt = (
-    f"{text}. "
-    "High quality, realistic, detailed, coherent with the description, 8k, sharp focus"
-)
-negative_prompt = (
-    "low quality, blurry, deformed, distorted, text, watermark, bad anatomy, extra limbs, cropped, "
-    "lowres, jpeg artifacts, worst quality, ugly, cartoonish, disfigured"
-)
+# --- Génération de l'image via Replicate ---
+prompt = f"Une image photoréaliste représentant : {text}, haute qualité, style photographie réaliste, détails précis, lumière naturelle"
+negative_prompt = "dessin, peinture, cartoon, illustration, animé, art stylisé, lowres, 3D render"
 
+print("🎨 Prompt envoyé à Replicate :", prompt)
+
+url = "https://api.replicate.com/v1/predictions"
 headers = {
     "Authorization": f"Token {REPLICATE_API_TOKEN}",
     "Content-Type": "application/json"
 }
-url = "https://api.replicate.com/v1/predictions"
-
-def generate_sdxl_image():
-    payload = {
-        "version": "stability-ai/sdxl:39ed52f2a78e934b3ba6e2a89f5b1c712de7dfea535525255b1aa35c5565e08b",
-        "input": {
-            "prompt": prompt,
-            "negative_prompt": negative_prompt,
-            "width": 1280,
-            "height": 720,
-            "guidance_scale": 9,
-            "num_inference_steps": 50
-        }
+payload = {
+    "version": "stability-ai/sdxl:39ed52f2a78e934b3ba6e2a89f5b1c712de7dfea535525255b1aa35c5565e08b",
+    "input": {
+        "prompt": prompt,
+        "negative_prompt": negative_prompt,
+        "width": 1280,
+        "height": 720
     }
-    response = requests.post(url, headers=headers, json=payload)
-    if response.status_code not in (200, 201):
-        print("❌ Erreur API SDXL:", response.text)
-        return None
+}
 
-    prediction = response.json()
-    prediction_url = prediction["urls"]["get"]
+response = requests.post(url, headers=headers, json=payload)
+if response.status_code not in [200, 201]:
+    print("❌ Erreur API Replicate :", response.text)
+    raise SystemExit(1)
 
-    while prediction["status"] not in ["succeeded", "failed"]:
-        time.sleep(3)
-        prediction = requests.get(prediction_url, headers=headers).json()
+prediction = response.json()
+prediction_url = prediction["urls"]["get"]
 
-    if prediction["status"] != "succeeded":
-        print("❌ Génération SDXL a échoué")
-        return None
+while prediction["status"] not in ["succeeded", "failed"]:
+    time.sleep(3)
+    prediction = requests.get(prediction_url, headers=headers).json()
 
-    image_url = prediction["output"][0]
-    img_data = requests.get(image_url).content
+if prediction["status"] != "succeeded":
+    raise SystemExit("❌ La génération a échoué.")
 
-    archive_filename = f"{global_index:04d}_{author_safe}_{snippet_safe}_SDXL.png"
-    archive_path = os.path.join("data/archives", archive_filename)
+image_url = prediction["output"][0]
+img_data = requests.get(image_url).content
 
-    with open(archive_path, "wb") as f:
-        f.write(img_data)
+# --- Sauvegardes finales ---
+with open(archive_path, "wb") as f:
+    f.write(img_data)
 
-    print(f"✅ Image SDXL sauvegardée :", archive_path)
-    return archive_path
+last_thumbnail_path = "data/last_thumbnail.png"
+with open(last_thumbnail_path, "wb") as f:
+    f.write(img_data)
 
-# --- Génération SDXL ---
-generated_path = generate_sdxl_image()
-
-# --- Composer une miniature ---
-final_path = None
-if generated_path:
-    try:
-        base_img = Image.open("data/miniature.png").convert("RGBA")
-        gen_img = Image.open(generated_path).convert("RGBA")
-        gen_img = gen_img.resize((785, 502))
-
-        # Position du cadre
-        x, y = 458, 150
-        base_img.paste(gen_img, (x, y), gen_img)
-
-        draw = ImageDraw.Draw(base_img)
-        try:
-            font = ImageFont.truetype("arial.ttf", 28)
-        except:
-            font = ImageFont.load_default()
-
-        text_color = (255, 255, 255, 255)
-        text_start_y = y + gen_img.height + 20
-        margin_right = 40
-
-        # Auteur aligné à droite
-        author_text = f"Auteur: {author}"
-        aw, ah = draw.textsize(author_text, font=font)
-        draw.text((x + gen_img.width - aw - margin_right, text_start_y), author_text, font=font, fill=text_color)
-
-        # Commentaire aligné à droite avec retour dynamique
-        max_width = gen_img.width - 2 * margin_right
-        words = text.split()
-        wrapped_lines = []
-        line = ""
-        for word in words:
-            test_line = line + (" " if line else "") + word
-            lw, _ = draw.textsize(test_line, font=font)
-            if lw <= max_width:
-                line = test_line
-            else:
-                wrapped_lines.append(line)
-                line = word
-        if line:
-            wrapped_lines.append(line)
-
-        for j, line in enumerate(wrapped_lines):
-            lw, lh = draw.textsize(line, font=font)
-            draw.text(
-                (x + gen_img.width - lw - margin_right, text_start_y + 40 + j * lh),
-                line,
-                font=font,
-                fill=text_color
-            )
-
-        # --- Sauvegarder l'ancienne miniature en last_thumbnail ---
-        final_path = "data/final_thumbnail.png"
-        last_path = "data/last_thumbnail.png"
-        if os.path.exists(final_path):
-            shutil.copy(final_path, last_path)
-            print("📂 Ancienne miniature copiée vers last_thumbnail.png")
-
-        # --- Sauvegarder la nouvelle miniature ---
-        base_img.save(final_path)
-        print(f"✅ Miniature finale composée avec texte SDXL : {final_path}")
-    except Exception as e:
-        print("⚠️ Impossible de composer la miniature :", e)
-
-# --- Sauvegarder dans selected_comments.json ---
+# Fichier agrégé de tous les commentaires sélectionnés
 selected_comments_path = "data/selected_comments.json"
 if os.path.exists(selected_comments_path):
     try:
@@ -166,16 +90,28 @@ else:
     all_selected = []
 
 entry = dict(comment)
-entry["_generated_image"] = generated_path
+entry["_archive_image"] = f"archives/{archive_filename}"
 entry["_index"] = global_index
 all_selected.append(entry)
 
 with open(selected_comments_path, "w", encoding="utf-8") as f:
     json.dump(all_selected, f, ensure_ascii=False, indent=2)
 
-print(f"✅ Commentaires agrégés : {selected_comments_path} (total: {len(all_selected)})")
+# 4) Composition finale avec miniature.png
+final_path = None
+try:
+    base_img = Image.open("data/miniature.png").convert("RGBA")
+    gen_img = Image.open(last_thumbnail_path).convert("RGBA")
+    gen_img = gen_img.resize((785, 502))
+    x, y = 458, 150
+    base_img.paste(gen_img, (x, y), gen_img)
+    final_path = "data/final_thumbnail.png"
+    base_img.save(final_path)
+    print(f"✅ Image finale composée : {final_path}")
+except Exception as e:
+    print("⚠️ Impossible de composer avec miniature.png :", e)
 
-# --- Mise à jour de l'horodatage ---
+# ✅ Mise à jour de l'horodatage uniquement si une image finale existe
 if final_path and os.path.exists(final_path):
     now_ts = int(time.time())
     last_update_path = "data/last_update.json"
@@ -183,5 +119,10 @@ if final_path and os.path.exists(final_path):
     with open(last_update_path, "w", encoding="utf-8") as f:
         json.dump(last_update, f)
     print(f"🕒 Horodatage mis à jour : {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(now_ts))}")
+else:
+    print("⚠️ Horodatage NON mis à jour (pas de final_thumbnail générée).")
 
-print("🎉 Terminé. Image générée :", generated_path)
+print(f"✅ Image archivée : {archive_path}")
+print(f"✅ Dernière miniature brute : {last_thumbnail_path}")
+print(f"✅ Commentaires agrégés : {selected_comments_path} (total: {len(all_selected)})")
+print("🌍 URL directe :", image_url)
