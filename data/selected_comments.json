@@ -62,5 +62,13 @@
     "publishedAt": "2025-09-06T12:50:36Z",
     "_archive_image": "archives/0005__MarieD_veloppe__un_chat_r_ali.png",
     "_index": 5
+  },
+  {
+    "author": "@MarieDéveloppe",
+    "text": "#un citron qui chante avec d'autres fruits",
+    "likes": 0,
+    "publishedAt": "2025-09-06T13:36:15Z",
+    "_generated_image": "data/archives/0006__MarieD_veloppe__un_citron_qui_SDXL.png",
+    "_index": 6
   }
 ]
