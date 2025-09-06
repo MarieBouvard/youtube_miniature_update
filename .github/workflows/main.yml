@@ -44,8 +44,8 @@ jobs:
           echo "💾 Commit horodatage seul (aucun commentaire trouvé)..."
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add data/last_update.json || true
-          git commit -m "🕒 Mise à jour horodatage (aucun commentaire trouvé)" || echo "ℹ️ Rien à commit"
+          git add -u data/last_update.json
+          git commit -m "🕒 Mise à jour horodatage (aucun commentaire trouvé)" --allow-empty
           git push
 
       - name: Stop if no new comments
@@ -77,8 +77,10 @@ jobs:
           echo "💾 Commit et push des résultats..."
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add data/final_thumbnail.png data/last_thumbnail.png data/archives/*.png data/selected_comments.json data/last_update.json || true
-          git commit -m "🖼️ Nouvelle miniature finale + mise à jour des commentaires + horodatage" || echo "ℹ️ Rien à commit"
+          # -u pour forcer les modifs sur final/last + ajout des nouveaux fichiers archives
+          git add -u data/final_thumbnail.png data/last_thumbnail.png data/selected_comments.json data/last_update.json
+          git add data/archives/*.png
+          git commit -m "🖼️ Nouvelle miniature finale + mise à jour des commentaires + horodatage" --allow-empty
           git push
 
       - name: Wait before upload
