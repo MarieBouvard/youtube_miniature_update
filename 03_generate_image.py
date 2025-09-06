@@ -3,6 +3,7 @@ import json
 import requests
 import time
 import re
+import shutil
 from PIL import Image, ImageDraw, ImageFont
 
 REPLICATE_API_TOKEN = os.getenv("REPLICATE_API_TOKEN")
@@ -138,7 +139,14 @@ if generated_path:
                 fill=text_color
             )
 
+        # --- Sauvegarder l'ancienne miniature en last_thumbnail ---
         final_path = "data/final_thumbnail.png"
+        last_path = "data/last_thumbnail.png"
+        if os.path.exists(final_path):
+            shutil.copy(final_path, last_path)
+            print("📂 Ancienne miniature copiée vers last_thumbnail.png")
+
+        # --- Sauvegarder la nouvelle miniature ---
         base_img.save(final_path)
         print(f"✅ Miniature finale composée avec texte SDXL : {final_path}")
     except Exception as e:
