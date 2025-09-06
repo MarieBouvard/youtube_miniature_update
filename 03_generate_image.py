@@ -125,7 +125,8 @@ try:
     lines, line = [], ""
     for word in words:
         test_line = line + (" " if line else "") + word
-        w, _ = draw.textsize(test_line, font=font)
+        bbox = draw.textbbox((0, 0), test_line, font=font)
+        w = bbox[2] - bbox[0]
         if w <= max_width:
             line = test_line
         else:
@@ -135,12 +136,15 @@ try:
         lines.append(line)
 
     # Calcul dimensions du bloc texte
-    line_heights = [draw.textsize(l, font=font)[1] for l in lines]
+    line_heights = []
+    for l in lines:
+        bbox = draw.textbbox((0, 0), l, font=font)
+        line_heights.append(bbox[3] - bbox[1])
+
     text_height = sum(line_heights) + 10
-    text_width = max(draw.textsize(l, font=font)[0] for l in lines) + 20
+    text_width = max(draw.textbbox((0, 0), l, font=font)[2] - draw.textbbox((0, 0), l, font=font)[0] for l in lines) + 20
 
     # Position : sous le cadre IA, en bas à droite
-    margin_bottom = 20
     margin_right = 20
     pos_x = x + gen_img.width - text_width - margin_right
     pos_y = y + gen_img.height + 10  # juste sous le cadre
