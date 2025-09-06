@@ -3,7 +3,7 @@ import json
 import requests
 import time
 import re
-from PIL import Image  # ✅ pour composer les images
+from PIL import Image, ImageDraw, ImageFont
 
 REPLICATE_API_TOKEN = os.getenv("REPLICATE_API_TOKEN")
 if not REPLICATE_API_TOKEN:
@@ -97,7 +97,7 @@ all_selected.append(entry)
 with open(selected_comments_path, "w", encoding="utf-8") as f:
     json.dump(all_selected, f, ensure_ascii=False, indent=2)
 
-# 4) Composition finale avec miniature.png
+# --- Composition finale avec miniature.png + cadre IA + texte en bas à droite ---
 final_path = None
 try:
     base_img = Image.open("data/miniature.png").convert("RGBA")
@@ -105,9 +105,58 @@ try:
     gen_img = gen_img.resize((785, 502))
     x, y = 458, 150
     base_img.paste(gen_img, (x, y), gen_img)
+
+    # Charger le dernier commentaire sélectionné
+    last_entry = all_selected[-1] if all_selected else comment
+    author_text = last_entry.get("author", "Anonyme")
+    comment_text = last_entry.get("text", "")
+
+    draw = ImageDraw.Draw(base_img)
+    try:
+        font = ImageFont.truetype("arial.ttf", 20)
+    except:
+        font = ImageFont.load_default()
+
+    display_text = f"{author_text} : {comment_text}"
+
+    # Retour à la ligne automatique
+    max_width = gen_img.width - 40
+    words = display_text.split()
+    lines, line = [], ""
+    for word in words:
+        test_line = line + (" " if line else "") + word
+        w, _ = draw.textsize(test_line, font=font)
+        if w <= max_width:
+            line = test_line
+        else:
+            lines.append(line)
+            line = word
+    if line:
+        lines.append(line)
+
+    # Calcul dimensions du bloc texte
+    line_heights = [draw.textsize(l, font=font)[1] for l in lines]
+    text_height = sum(line_heights) + 10
+    text_width = max(draw.textsize(l, font=font)[0] for l in lines) + 20
+
+    # Position : sous le cadre IA, en bas à droite
+    margin_bottom = 20
+    margin_right = 20
+    pos_x = x + gen_img.width - text_width - margin_right
+    pos_y = y + gen_img.height + 10  # juste sous le cadre
+
+    # Fond noir semi-transparent
+    overlay = Image.new("RGBA", (text_width, text_height), (0, 0, 0, 150))
+    base_img.paste(overlay, (pos_x, pos_y), overlay)
+
+    # Dessiner le texte en blanc
+    for i, l in enumerate(lines):
+        draw.text((pos_x + 10, pos_y + 5 + i * 22), l, font=font, fill=(255, 255, 255, 255))
+
     final_path = "data/final_thumbnail.png"
     base_img.save(final_path)
-    print(f"✅ Image finale composée : {final_path}")
+    print(f"✅ Image finale composée avec commentaire en bas à droite : {final_path}")
+
 except Exception as e:
     print("⚠️ Impossible de composer avec miniature.png :", e)
 
