@@ -4,6 +4,7 @@ import requests
 import time
 import re
 import subprocess
+from datetime import datetime
 from PIL import Image, ImageDraw, ImageFont
 
 # --- Paramètres ---
@@ -34,18 +35,23 @@ with open("data/selected_comment.json", "r", encoding="utf-8") as f:
 text = comment.get("text", "")
 author = comment.get("author", "Anonyme")
 
-author_safe = re.sub(r"[^a-zA-Z0-9_-]", "_", author)
-snippet = text[:14] if text else "no_text"
-snippet_safe = re.sub(r"[^a-zA-Z0-9_-]", "_", snippet)
-
 os.makedirs("data", exist_ok=True)
 os.makedirs("data/archives", exist_ok=True)
 
 # --- Numéro d'archive suivant ---
-existing_archives = [f for f in os.listdir("data/archives") if f.endswith("_generated.png")]
+existing_archives = [f for f in os.listdir("data/archives") if f.lower().endswith(".png")]
 next_num = len(existing_archives) + 1
 num_str = f"{next_num:04d}"
-archive_generated = os.path.join("data/archives", f"{num_str}_generated.png")
+
+# --- Construire nom avec auteur + snippet + date ---
+author_part = re.sub(r"[^a-zA-Z0-9_-]", "_", author)[:20] or "Anonyme"
+snippet_part = re.sub(r"[^a-zA-Z0-9_-]", "_", text[:20]) or "no_text"
+date_part = datetime.now().strftime("%Y-%m-%d")
+
+archive_generated = os.path.join(
+    "data/archives",
+    f"{num_str}_{author_part}_{snippet_part}_{date_part}.png"
+)
 
 # --- Prompt ---
 prompt = f"{PROMPT_PREFIX}{text}, haute qualité, style photographie réaliste, détails précis, lumière naturelle"
@@ -106,7 +112,7 @@ else:
     all_selected = []
 
 entry = dict(comment)
-entry["_archive_image"] = f"archives/{num_str}_generated.png"
+entry["_archive_image"] = f"archives/{os.path.basename(archive_generated)}"
 entry["_index"] = next_num
 all_selected.append(entry)
 
