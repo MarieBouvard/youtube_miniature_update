@@ -7,9 +7,6 @@ from googleapiclient.discovery import build
 API_KEY = os.getenv("YOUTUBE_API_KEY")
 VIDEO_ID = os.getenv("YOUTUBE_VIDEO_ID")
 
-# Active/désactive le filtre sur "#"
-USE_HASH_FILTER = False  
-
 if not API_KEY or not VIDEO_ID:
     raise SystemExit("❌ Secrets YOUTUBE_API_KEY et YOUTUBE_VIDEO_ID requis.")
 
@@ -46,16 +43,12 @@ request = youtube.commentThreads().list(
 )
 response = request.execute()
 
-comments = []
+all_comments = []
 for item in response.get("items", []):
     snippet = item["snippet"]["topLevelComment"]["snippet"]
-    text = snippet.get("textOriginal", "").strip()  # ✅ utiliser le texte brut
+    text = snippet.get("textOriginal", "").strip()
 
     print(f"🔍 Commentaire brut reçu : {repr(text)} (likes={snippet['likeCount']})")
-
-    # Optionnel : garder seulement les commentaires qui commencent par "#"
-    if USE_HASH_FILTER and not text.lstrip().startswith("#"):
-        continue
 
     if use_time_filter:
         published = snippet["publishedAt"]  # ex: "2025-09-06T09:50:43Z"
@@ -64,12 +57,23 @@ for item in response.get("items", []):
             print(f"⏩ Ignoré (avant ou égal à dernier horodatage : {published})")
             continue
 
-    comments.append({
+    all_comments.append({
         "author": snippet["authorDisplayName"],
         "text": text,
         "likes": snippet["likeCount"],
         "publishedAt": snippet["publishedAt"]
     })
+
+# --- Séparation avec/sans hashtag ---
+with_hashtag = [c for c in all_comments if c["text"].lstrip().startswith("#")]
+without_hashtag = [c for c in all_comments if not c["text"].lstrip().startswith("#")]
+
+if with_hashtag:
+    comments = with_hashtag
+    print(f"✅ {len(comments)} commentaires retenus avec hashtag (#)")
+else:
+    comments = without_hashtag
+    print(f"✅ Aucun hashtag trouvé → {len(comments)} commentaires retenus sans hashtag")
 
 # Si pas de filtre temps : garder max 30 derniers
 if not use_time_filter:
