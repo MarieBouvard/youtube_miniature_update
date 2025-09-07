@@ -3,8 +3,12 @@ import json
 import time
 from googleapiclient.discovery import build
 
+# --- Paramètres ---
 API_KEY = os.getenv("YOUTUBE_API_KEY")
 VIDEO_ID = os.getenv("YOUTUBE_VIDEO_ID")
+
+# Active/désactive le filtre sur "#"
+USE_HASH_FILTER = False  
 
 if not API_KEY or not VIDEO_ID:
     raise SystemExit("❌ Secrets YOUTUBE_API_KEY et YOUTUBE_VIDEO_ID requis.")
@@ -14,7 +18,7 @@ youtube = build("youtube", "v3", developerKey=API_KEY)
 os.makedirs("data", exist_ok=True)
 last_update_path = "data/last_update.json"
 
-# Vérifier ou créer le fichier d'horodatage
+# Vérifier ou créer le fichier d’horodatage
 if not os.path.exists(last_update_path):
     with open(last_update_path, "w", encoding="utf-8") as f:
         json.dump({"timestamp": 0}, f)
@@ -49,8 +53,8 @@ for item in response.get("items", []):
 
     print(f"🔍 Commentaire brut reçu : {repr(text)} (likes={snippet['likeCount']})")
 
-    # Garder seulement si ça commence par #
-    if not text.lstrip().startswith("#"):
+    # Optionnel : garder seulement les commentaires qui commencent par "#"
+    if USE_HASH_FILTER and not text.lstrip().startswith("#"):
         continue
 
     if use_time_filter:
