@@ -118,8 +118,10 @@ final_path = None
 try:
     base_img = Image.open("data/miniature.png").convert("RGBA")
     gen_img = Image.open(last_thumbnail_path).convert("RGBA")
-    gen_img = gen_img.resize((785, 502))
-    x, y = 458, 150
+
+    # 📌 Nouvelles dimensions et coordonnées (issues du test)
+    gen_img = gen_img.resize((872, 557))
+    x, y = 32, 85
     base_img.paste(gen_img, (x, y), gen_img)
 
     # Texte sous l'image
@@ -131,11 +133,22 @@ try:
         font = ImageFont.truetype("DejaVuSans-Bold.ttf", 18)
     except Exception:
         font = ImageFont.load_default()
-    text_y = y + 502 + 10
+    text_y = y + 562 + 10
     bbox = draw.textbbox((0, 0), text_line, font=font)
     text_w = bbox[2] - bbox[0]
-    text_x = x + 785 - text_w
+    text_x = x + 800 - text_w
     draw.text((text_x, text_y), text_line, font=font, fill="white")
+
+    # --- Ajouter surminiature.png par-dessus ---
+    overlay_path = "data/surminiature.png"
+    if os.path.exists(overlay_path):
+        overlay = Image.open(overlay_path).convert("RGBA")
+        if overlay.size != base_img.size:
+            overlay = overlay.resize(base_img.size)
+        base_img.alpha_composite(overlay)
+        print("✅ surminiature.png ajouté par-dessus")
+    else:
+        print("⚠️ surminiature.png introuvable, montage sans overlay")
 
     # Sauvegarde finale
     final_path = "data/final_thumbnail.png"
