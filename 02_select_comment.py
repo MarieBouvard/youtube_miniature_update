@@ -22,22 +22,14 @@ candidates = [c for c in comments if c["likes"] == max_likes]
 # En cas d’égalité → tirage au sort
 selected = random.choice(candidates)
 
-# Nettoyer l’auteur pour nom de fichier
+# Nettoyer l’auteur pour nom de fichier (utile si tu veux l’afficher)
 author = selected.get("author", "Anonyme")
 author_safe = re.sub(r"[^a-zA-Z0-9_-]", "_", author)
 
 os.makedirs("data", exist_ok=True)
 
-# --- Numéro global ---
-all_jsons = [f for f in os.listdir("data") if f.endswith(".json") and not f.startswith("selected_comment")]
-global_number = len(all_jsons) + 1
-global_filename = f"Comment_{global_number}.json"
-
-# Sauvegardes
+# Sauvegarde uniquement dans selected_comment.json
 with open("data/selected_comment.json", "w", encoding="utf-8") as f:
-    json.dump(selected, f, ensure_ascii=False, indent=2)
-
-with open(os.path.join("data", global_filename), "w", encoding="utf-8") as f:
     json.dump(selected, f, ensure_ascii=False, indent=2)
 
 # --- Logs détaillés ---
