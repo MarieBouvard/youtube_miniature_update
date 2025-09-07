@@ -1,4 +1,6 @@
 google-api-python-client
 google-auth
 google-auth-oauthlib
-Pillow
+replicate>=0.25.0
+Pillow>=10.0.0
+requests>=2.31.0
