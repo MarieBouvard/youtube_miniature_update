@@ -129,7 +129,7 @@ try:
     draw = ImageDraw.Draw(base_img)
     text_line = f"{author} : {text}"
     try:
-        font = ImageFont.truetype("DejaVuSans-Bold.ttf", 20)
+        font = ImageFont.truetype("DejaVuSans-Bold.ttf", 22)
     except Exception:
         font = ImageFont.load_default()
 
