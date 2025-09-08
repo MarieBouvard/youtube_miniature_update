@@ -86,7 +86,7 @@ if prediction["status"] != "succeeded":
 image_url = prediction["output"][0]
 img_data = requests.get(image_url).content
 
-# --- Sauvegarde temporaire image générée ---
+# --- Sauvegarde temporaire de l'image brute ---
 last_thumbnail_path = "data/last_thumbnail.png"
 with open(last_thumbnail_path, "wb") as f:
     f.write(img_data)
@@ -140,7 +140,8 @@ try:
 
     for word in words:
         test_line = current_line + (" " if current_line else "") + word
-        w, h = draw.textsize(test_line, font=font)
+        bbox = draw.textbbox((0, 0), test_line, font=font)
+        w = bbox[2] - bbox[0]
         if w <= max_width:
             current_line = test_line
         else:
@@ -152,7 +153,9 @@ try:
     text_y = y + 562 + 10
     for line in lines:
         draw.text((x, text_y), line, font=font, fill="white")
-        text_y += h + 5
+        bbox = draw.textbbox((0, 0), line, font=font)
+        line_height = bbox[3] - bbox[1]
+        text_y += line_height + 5
 
     # --- Ajouter surminiature.png par-dessus ---
     overlay_path = "data/surminiature.png"
