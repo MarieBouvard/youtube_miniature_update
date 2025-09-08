@@ -129,7 +129,7 @@ try:
     draw = ImageDraw.Draw(base_img)
     text_line = f"{author} : {text}"
     try:
-        font = ImageFont.truetype("DejaVuSans-Bold.ttf", 22)
+        font = ImageFont.truetype("DejaVuSans-Bold.ttf", 24)
     except Exception:
         font = ImageFont.load_default()
 
@@ -150,7 +150,7 @@ try:
     if current_line:
         lines.append(current_line)
 
-    text_y = y + 562 + 8
+    text_y = y + 562 + 10
     for line in lines:
         draw.text((x, text_y), line, font=font, fill="white")
         bbox = draw.textbbox((0, 0), line, font=font)
