@@ -86,17 +86,12 @@ if prediction["status"] != "succeeded":
 image_url = prediction["output"][0]
 img_data = requests.get(image_url).content
 
-# --- Sauvegarde brute ---
-with open(archive_generated, "wb") as f:
-    f.write(img_data)
+# --- Sauvegarde temporaire image générée ---
 last_thumbnail_path = "data/last_thumbnail.png"
 with open(last_thumbnail_path, "wb") as f:
     f.write(img_data)
 
-print(f"✅ Image brute archivée : {archive_generated}")
-
-# --- Commit immédiat pour l’image brute ---
-commit_and_push(f"🖼️ Image brute {num_str} (qwen)")
+print("✅ Image générée téléchargée")
 
 # --- Mise à jour selected_comments.json ---
 selected_comments_path = "data/selected_comments.json"
@@ -125,25 +120,39 @@ try:
     base_img = Image.open("data/miniature.png").convert("RGBA")
     gen_img = Image.open(last_thumbnail_path).convert("RGBA")
 
-    # 📌 Nouvelles dimensions et coordonnées (issues du test)
+    # 📌 Nouvelles dimensions et coordonnées
     gen_img = gen_img.resize((872, 557))
     x, y = 32, 85
     base_img.paste(gen_img, (x, y), gen_img)
 
-    # Texte sous l'image
+    # Texte sous l'image (aligné à gauche + retour à la ligne auto)
     draw = ImageDraw.Draw(base_img)
     text_line = f"{author} : {text}"
-    if len(text_line) > 70:
-        text_line = text_line[:67] + "..."
     try:
-        font = ImageFont.truetype("DejaVuSans-Bold.ttf", 18)
+        font = ImageFont.truetype("DejaVuSans-Bold.ttf", 20)
     except Exception:
         font = ImageFont.load_default()
+
+    max_width = 872
+    words = text_line.split()
+    lines = []
+    current_line = ""
+
+    for word in words:
+        test_line = current_line + (" " if current_line else "") + word
+        w, h = draw.textsize(test_line, font=font)
+        if w <= max_width:
+            current_line = test_line
+        else:
+            lines.append(current_line)
+            current_line = word
+    if current_line:
+        lines.append(current_line)
+
     text_y = y + 562 + 10
-    bbox = draw.textbbox((0, 0), text_line, font=font)
-    text_w = bbox[2] - bbox[0]
-    text_x = x + 800 - text_w
-    draw.text((text_x, text_y), text_line, font=font, fill="white")
+    for line in lines:
+        draw.text((x, text_y), line, font=font, fill="white")
+        text_y += h + 5
 
     # --- Ajouter surminiature.png par-dessus ---
     overlay_path = "data/surminiature.png"
@@ -156,10 +165,12 @@ try:
     else:
         print("⚠️ surminiature.png introuvable, montage sans overlay")
 
-    # Sauvegarde finale
+    # Sauvegarde finale (miniature + archive)
     final_path = "data/final_thumbnail.png"
     base_img.save(final_path)
-    print(f"✅ Image finale composée : {final_path}")
+    base_img.save(archive_generated)
+    print(f"✅ Montage final composé et archivé : {archive_generated}")
+
 except Exception as e:
     print("⚠️ Impossible de composer avec miniature.png :", e)
 
@@ -178,6 +189,6 @@ else:
 if final_path and os.path.exists(final_path):
     commit_and_push(f"🖼️ Miniature finale {num_str} (qwen)")
 
-print(f"✅ Dernière miniature brute : {last_thumbnail_path}")
+print(f"✅ Dernière miniature finale : {final_path}")
 print(f"✅ Commentaires agrégés : {selected_comments_path} (total: {len(all_selected)})")
 print("🌍 URL directe :", image_url)
