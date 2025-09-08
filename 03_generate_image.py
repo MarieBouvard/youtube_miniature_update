@@ -150,7 +150,7 @@ try:
     if current_line:
         lines.append(current_line)
 
-    text_y = y + 562 + 10
+    text_y = y + 562 + 8
     for line in lines:
         draw.text((x, text_y), line, font=font, fill="white")
         bbox = draw.textbbox((0, 0), line, font=font)
